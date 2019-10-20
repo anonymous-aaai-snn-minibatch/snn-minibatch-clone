@@ -1,0 +1,85 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: snn-minibatch-1
+spec:
+  backoffLimit: 5
+  completions: 2
+  template:
+    metadata:
+      labels:
+        app: snn-minibatch-1
+      name: snn-minibatch-1
+    spec:
+       affinity: {
+           nodeAffinity: {
+             requiredDuringSchedulingIgnoredDuringExecution: {
+               nodeSelectorTerms: [
+                 {
+                   matchExpressions: [
+                     {
+                       "key": "nvidia-gpu-name",
+                       "operator": "In",
+                       "values": ["Tesla-V100-DGXS-16GB", "GeForce-GTX-1080-Ti"]
+                     }
+                   ]
+                 }
+               ]
+             }
+           }
+         }
+       restartPolicy: Never
+       securityContext:
+           runAsUser: 1000003
+           runAsGroup: 1000001
+           fsGroup: 1000001
+           supplementalGroups: [1000001]
+       volumes:
+       - name: shared-datasets
+         persistentVolumeClaim:
+             claimName: datasets
+       - name: user-home
+         persistentVolumeClaim:
+             claimName: home
+       containers:
+       - name: snn-minibatch-1
+         image: chaneyk/pytorch:1.1.0-py3
+         imagePullPolicy: IfNotPresent
+         workingDir: /NAS/home/research/snn-minibatch
+         command: ["python3" , "scaling.py" , "--gpu" , "--batch-size" , "1" , "--learning" , "--results-file" , "1_test" ]
+         env:
+         - name: HOME
+           value: "/NAS/home"
+         - name: PYTHONUNBUFFERED
+           value: "0"
+         resources:
+           requests:
+             cpu: 7.9
+             memory: 8Gi
+           limits:
+             cpu: 12
+             memory: 32Gi
+             nvidia.com/gpu: 1
+         livenessProbe:
+           exec:
+             command:
+             - 'false'
+           initialDelaySeconds: 3900
+           periodSeconds: 1
+         volumeMounts:
+         - name: user-home
+           mountPath: /NAS/home
+         - name: shared-datasets
+           mountPath: /NAS/data
+       dnsPolicy: "None"
+       dnsConfig:
+         nameservers:
+           - 8.8.8.8
+           - 8.8.4.4
+         searches:
+           - cis.upenn.edu
+           - seas.upenn.edu
+         options:
+           - name: ndots
+             value: "5"
+           - name: edns0

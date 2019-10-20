@@ -1,0 +1,7 @@
+.idea/
+jobs/
+__pycache__/
+Pipfile.lock
+data/
+bash/dac/output/
+*.swp
